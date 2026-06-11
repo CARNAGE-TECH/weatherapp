@@ -327,7 +327,6 @@ export default function App() {
   const handleKey = (e) => { if (e.key === 'Enter') { setShowSuggestions(false); search(); } };
 
   const selectSuggestion = (s) => {
-    const name = s.state ? `${s.name}, ${s.state}, ${s.country}` : `${s.name}, ${s.country}`;
     setCity(s.name);
     setShowSuggestions(false);
     fetchWeather({ lat: s.lat, lon: s.lon }, true);
@@ -345,7 +344,7 @@ export default function App() {
     if (!weather) return;
     setFavourites(prev => prev.includes(weather.name) ? prev.filter(f => f !== weather.name) : [...prev, weather.name]);
   };
-  
+
   const isFav = weather && favourites.includes(weather.name);
   const convertTemp = (t) => unit === 'metric' ? Math.round(t) + '°C' : Math.round(t * 9 / 5 + 32) + '°F';
   const formatTime = (unix) => new Date(unix * 1000).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
