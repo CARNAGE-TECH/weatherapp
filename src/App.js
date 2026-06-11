@@ -343,10 +343,9 @@ export default function App() {
 
   const toggleFavourite = () => {
     if (!weather) return;
-    const name = weather.name;
-    setFavourites(prev => prev.includes(name) ? prev.filter(f => f !== name) : [...prev, name]);
+    setFavourites(prev => prev.includes(weather.name) ? prev.filter(f => f !== weather.name) : [...prev, weather.name]);
   };
-
+  
   const isFav = weather && favourites.includes(weather.name);
   const convertTemp = (t) => unit === 'metric' ? Math.round(t) + '°C' : Math.round(t * 9 / 5 + 32) + '°F';
   const formatTime = (unix) => new Date(unix * 1000).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
