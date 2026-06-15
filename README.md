@@ -1,70 +1,129 @@
-# Getting Started with Create React App
+# WeatherNow ⛅
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+> A real-time weather application with immersive animated weather backgrounds, city autocomplete, air quality index, 5-day forecasts, favourite cities, and Celsius/Fahrenheit toggle — built with React and OpenWeatherMap API.
 
-## Available Scripts
+**Live Demo:** [weatherapp-5got.vercel.app](https://weatherapp-5got.vercel.app)
+**GitHub:** [github.com/CARNAGE-TECH/weatherapp](https://github.com/CARNAGE-TECH/weatherapp)
 
-In the project directory, you can run:
+---
 
-### `npm start`
+## Overview
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+WeatherNow goes beyond showing a temperature number. It delivers a fully immersive experience where the entire background transforms based on the current weather — falling raindrops for rain, lightning flashes for thunderstorms, drifting snowflakes for snow, and pulsing sun rays for clear skies. Built with performance and visual quality in mind.
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+---
 
-### `npm test`
+## Features
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+### Real-Time Weather Data
+- Current weather for any city worldwide
+- Temperature display in Celsius or Fahrenheit (toggle anytime)
+- Feels like temperature, daily high and low
+- Humidity, wind speed, visibility, atmospheric pressure
+- Sunrise and sunset times with formatted display
 
-### `npm run build`
+### 5-Day Forecast
+- Daily weather forecast for the next 5 days
+- High and low temperatures per day
+- Weather condition icons and descriptions per day
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+### Air Quality Index
+- Real-time AQI powered by OpenWeatherMap Air Pollution API
+- AQI level label: Good, Fair, Moderate, Poor, Very Poor
+- Color-coded AQI badge
+- Full pollutant breakdown: PM2.5, PM10, CO, NO₂, O₃, SO₂
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+### Smart City Search
+- City search with **live autocomplete dropdown** via Geocoding API
+- Shows city, state, and country for disambiguation
+- **Detect my location** using browser geolocation API
+- Search history — remembers your last 6 searched cities
+- Favourite cities — star any city for instant access
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+### Animated Weather Backgrounds
+Each weather condition has its own unique background animation:
+- ☀️ **Clear** — radiating sun rays with glowing orb
+- 🌧️ **Rain / Drizzle** — falling animated raindrops
+- ⛈️ **Thunderstorm** — lightning bolt SVG with screen flash effect and rain
+- ❄️ **Snow** — drifting rotating snowflakes
+- ☁️ **Clouds** — slow drifting cloud shapes
+- 🌫️ **Mist/Fog/Haze** — layered animated fog bands
 
-### `npm run eject`
+### Design & UX
+- Glassmorphism card design with backdrop blur
+- Smooth page transitions and entrance animations with Framer Motion
+- Professional SVG weather icons via React Icons Weather Icons set
+- Fully mobile responsive layout
+- Color-coded theme per weather condition
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+---
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+## Tech Stack
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+| Technology | Purpose |
+|---|---|
+| React | Frontend framework |
+| OpenWeatherMap API | Weather, forecast, AQI, geocoding data |
+| Framer Motion | Animations and weather background transitions |
+| React Icons (Weather Icons) | Professional weather and UI icons |
+| localStorage | Search history and favourite cities |
+| Vercel | Deployment |
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+---
 
-## Learn More
+## Getting Started
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+### Prerequisites
+- Node.js v16+
+- npm
+- Free OpenWeatherMap API key from [openweathermap.org](https://openweathermap.org)
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+### Installation
 
-### Code Splitting
+```bash
+git clone https://github.com/CARNAGE-TECH/weatherapp.git
+cd weatherapp
+npm install
+npm start
+```
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+Replace the API key in `src/App.js`:
+```js
+const API_KEY = 'your_openweathermap_api_key_here';
+```
 
-### Analyzing the Bundle Size
+---
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+## Project Structure
 
-### Making a Progressive Web App
+src/
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+└── App.js    # Complete application — all logic, animations, and UI in one file
 
-### Advanced Configuration
+---
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+## Roadmap
 
-### Deployment
+- [ ] Hourly forecast breakdown (next 24 hours)
+- [ ] Severe weather alerts
+- [ ] Multi-city side-by-side comparison
+- [ ] PWA support with offline caching
+- [ ] Weather history for past days
+- [ ] Embeddable weather widget
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
+---
 
-### `npm run build` fails to minify
+## Author
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+**Joseph Omokwale**
+Freelance Web Developer & Designer
+OMTECH INNOVATORS — *The Future of Tech...*
+📍 Edo State, Nigeria
+🌐 [omtech-portfolio.vercel.app](https://omtech-portfolio.vercel.app)
+💼 [github.com/CARNAGE-TECH](https://github.com/CARNAGE-TECH)
+📱 WhatsApp: [+234 807 638 4453](https://wa.me/2348076384453)
+
+---
+
+## License
+MIT License
