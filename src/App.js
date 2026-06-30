@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   WiDaySunny, WiCloudy, WiRain, WiDaySprinkle,
@@ -7,7 +7,7 @@ import {
 } from 'react-icons/wi';
 import { FiSearch, FiMapPin, FiStar, FiX, FiEye, FiWind } from 'react-icons/fi';
 
-const API_KEY = '308a48b569a234cfe61bc577f88c1af9';
+const API_KEY = process.env.REACT_APP_OPENWEATHER_API_KEY;
 
 const weatherThemes = {
   Clear: { bg: 'linear-gradient(160deg, #f7931e 0%, #f9a825 40%, #1a91e8 100%)', card: 'rgba(255,255,255,0.18)', accent: '#FFD700' },
@@ -32,6 +32,46 @@ const fadeUp = {
 };
 const stagger = { animate: { transition: { staggerChildren: 0.08 } } };
 
+const sampleCities = ['Lagos', 'London', 'Tokyo', 'New York'];
+
+const getDailyForecast = (items = []) => Object.values(items.reduce((daysByDate, item) => {
+  const dateKey = item.dt_txt.split(' ')[0];
+
+  if (!daysByDate[dateKey]) {
+    daysByDate[dateKey] = {
+      dt: item.dt,
+      weather: item.weather,
+      main: {
+        temp_min: item.main.temp_min,
+        temp_max: item.main.temp_max
+      },
+      descriptions: {}
+    };
+  }
+
+  const day = daysByDate[dateKey];
+  day.main.temp_min = Math.min(day.main.temp_min, item.main.temp_min);
+  day.main.temp_max = Math.max(day.main.temp_max, item.main.temp_max);
+
+  const description = item.weather[0].description;
+  day.descriptions[description] = (day.descriptions[description] || 0) + 1;
+
+  if (item.dt_txt.includes('12:00:00')) {
+    day.dt = item.dt;
+    day.weather = item.weather;
+  }
+
+  return daysByDate;
+}, {})).map((day) => {
+  const description = Object.entries(day.descriptions).sort((a, b) => b[1] - a[1])[0]?.[0];
+
+  return {
+    dt: day.dt,
+    main: day.main,
+    weather: description ? [{ ...day.weather[0], description }] : day.weather
+  };
+}).slice(0, 5);
+
 const getWeatherIcon = (main, size = 48) => {
   const props = { size, color: 'white' };
   const icons = {
@@ -43,7 +83,7 @@ const getWeatherIcon = (main, size = 48) => {
   return icons[main] || <WiDaySunnyOvercast {...props} />;
 };
 
-// ── Background animations ──────────────────────────────────────────────
+// Background animations
 
 function SunRays() {
   return (
@@ -77,13 +117,13 @@ function SunRays() {
 }
 
 function RainDrops() {
-  const drops = [...Array(40)].map((_, i) => ({
+  const drops = useMemo(() => [...Array(40)].map(() => ({
     left: Math.random() * 100,
     delay: Math.random() * 2,
     duration: 0.6 + Math.random() * 0.6,
     size: 1 + Math.random() * 1.5,
     height: 12 + Math.random() * 16
-  }));
+  })), []);
   return (
     <div style={{ position: 'fixed', inset: 0, overflow: 'hidden', pointerEvents: 'none', zIndex: 0 }}>
       {drops.map((d, i) => (
@@ -97,13 +137,13 @@ function RainDrops() {
 }
 
 function SnowFlakes() {
-  const flakes = [...Array(35)].map((_, i) => ({
+  const flakes = useMemo(() => [...Array(35)].map(() => ({
     left: Math.random() * 100,
     delay: Math.random() * 5,
     duration: 4 + Math.random() * 4,
     size: 4 + Math.random() * 8,
     drift: (Math.random() - 0.5) * 60
-  }));
+  })), []);
   return (
     <div style={{ position: 'fixed', inset: 0, overflow: 'hidden', pointerEvents: 'none', zIndex: 0 }}>
       {flakes.map((f, i) => (
@@ -139,6 +179,13 @@ function CloudDrift() {
 function LightningFlash() {
   const [flash, setFlash] = useState(false);
   const [boltPos, setBoltPos] = useState(40);
+  const drops = useMemo(() => [...Array(30)].map(() => ({
+    left: Math.random() * 100,
+    delay: Math.random() * 2,
+    duration: 0.5 + Math.random() * 0.5,
+    size: 1 + Math.random(),
+    height: 10 + Math.random() * 14
+  })), []);
 
   useEffect(() => {
     const trigger = () => {
@@ -157,14 +204,6 @@ function LightningFlash() {
     const t = schedule();
     return () => clearTimeout(t);
   }, []);
-
-  const drops = [...Array(30)].map((_, i) => ({
-    left: Math.random() * 100,
-    delay: Math.random() * 2,
-    duration: 0.5 + Math.random() * 0.5,
-    size: 1 + Math.random(),
-    height: 10 + Math.random() * 14
-  }));
 
   return (
     <div style={{ position: 'fixed', inset: 0, overflow: 'hidden', pointerEvents: 'none', zIndex: 0 }}>
@@ -251,6 +290,8 @@ export default function App() {
   const [locating, setLocating] = useState(false);
   const [theme, setTheme] = useState(weatherThemes.default);
   const [condition, setCondition] = useState(null);
+  const [lastRequest, setLastRequest] = useState(null);
+  const [lastUpdated, setLastUpdated] = useState(null);
   const debounceRef = useRef(null);
   const suggestRef = useRef(null);
 
@@ -265,6 +306,7 @@ export default function App() {
 
   const fetchSuggestions = async (q) => {
     if (!q || q.length < 2) { setSuggestions([]); return; }
+    if (!API_KEY) { setSuggestions([]); return; }
     try {
       const res = await fetch(`https://api.openweathermap.org/geo/1.0/direct?q=${encodeURIComponent(q)}&limit=5&appid=${API_KEY}`);
       const data = await res.json();
@@ -280,20 +322,27 @@ export default function App() {
     debounceRef.current = setTimeout(() => fetchSuggestions(val), 350);
   };
 
-  const fetchWeather = async (q, isCoords = false) => {
+  const fetchWeather = async (q, isCoords = false, selectedUnit = unit) => {
+    if (!API_KEY) {
+      setError('Missing OpenWeatherMap API key. Add REACT_APP_OPENWEATHER_API_KEY to your .env file.');
+      return;
+    }
+
     setLoading(true);
     setError('');
     setWeather(null);
     setForecast([]);
     setAirQuality(null);
+    setLastUpdated(null);
     setShowSuggestions(false);
     setSuggestions([]);
+    setLastRequest({ q, isCoords });
 
     try {
       const baseQuery = isCoords ? `lat=${q.lat}&lon=${q.lon}` : `q=${encodeURIComponent(q)}`;
       const [weatherRes, forecastRes] = await Promise.all([
-        fetch(`https://api.openweathermap.org/data/2.5/weather?${baseQuery}&appid=${API_KEY}&units=${unit}`),
-        fetch(`https://api.openweathermap.org/data/2.5/forecast?${baseQuery}&appid=${API_KEY}&units=${unit}`)
+        fetch(`https://api.openweathermap.org/data/2.5/weather?${baseQuery}&appid=${API_KEY}&units=${selectedUnit}`),
+        fetch(`https://api.openweathermap.org/data/2.5/forecast?${baseQuery}&appid=${API_KEY}&units=${selectedUnit}`)
       ]);
 
       if (!weatherRes.ok) { setError('City not found. Please check the spelling and try again.'); setLoading(false); return; }
@@ -310,8 +359,9 @@ export default function App() {
       setTheme(getTheme(main));
       setCondition(main);
 
-      const daily = forecastData.list.filter(item => item.dt_txt.includes('12:00:00')).slice(0, 5);
+      const daily = getDailyForecast(forecastData.list);
       setForecast(daily);
+      setLastUpdated(new Date());
 
       const cityName = weatherData.name;
       setHistory(prev => {
@@ -346,8 +396,16 @@ export default function App() {
   };
 
   const isFav = weather && favourites.includes(weather.name);
-  const convertTemp = (t) => unit === 'metric' ? Math.round(t) + '°C' : Math.round(t * 9 / 5 + 32) + '°F';
+  const convertTemp = (t) => `${Math.round(t)}°${unit === 'metric' ? 'C' : 'F'}`;
   const formatTime = (unix) => new Date(unix * 1000).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+  const formatUpdated = (date) => date?.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+  const windUnit = unit === 'metric' ? 'm/s' : 'mph';
+
+  const toggleUnit = () => {
+    const nextUnit = unit === 'metric' ? 'imperial' : 'metric';
+    setUnit(nextUnit);
+    if (lastRequest) fetchWeather(lastRequest.q, lastRequest.isCoords, nextUnit);
+  };
 
   const glassStyle = {
     background: theme.card, backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
@@ -378,7 +436,7 @@ export default function App() {
             </div>
             <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.65)', marginTop: '2px' }}>Real-time weather anywhere</div>
           </div>
-          <motion.button whileTap={{ scale: 0.95 }} onClick={() => setUnit(u => u === 'metric' ? 'imperial' : 'metric')}
+          <motion.button whileTap={{ scale: 0.95 }} onClick={toggleUnit} aria-label={`Switch to ${unit === 'metric' ? 'Fahrenheit' : 'Celsius'}`}
             style={{ background: 'rgba(255,255,255,0.2)', border: '1px solid rgba(255,255,255,0.35)', borderRadius: '10px', padding: '9px 16px', color: 'white', fontWeight: '700', cursor: 'pointer', fontSize: '15px', fontFamily: 'inherit' }}>
             °{unit === 'metric' ? 'C' : 'F'}
           </motion.button>
@@ -390,6 +448,7 @@ export default function App() {
             <div style={{ flex: 1, position: 'relative' }} ref={suggestRef}>
               <FiSearch size={16} color="#9ca3af" style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
               <input value={city} onChange={handleCityChange} onKeyDown={handleKey} onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
+                aria-label="Search for a city"
                 placeholder="Search city..."
                 style={{ width: '100%', padding: '13px 16px 13px 40px', borderRadius: '12px', border: 'none', fontSize: '15px', outline: 'none', background: 'rgba(255,255,255,0.95)', fontFamily: 'inherit', boxSizing: 'border-box' }} />
 
@@ -414,11 +473,11 @@ export default function App() {
               </AnimatePresence>
             </div>
 
-            <motion.button whileTap={{ scale: 0.92 }} onClick={search}
+            <motion.button whileTap={{ scale: 0.92 }} onClick={search} aria-label="Search weather"
               style={{ padding: '0 16px', borderRadius: '12px', border: 'none', background: theme.accent || 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}>
               <FiSearch size={18} color="#185FA5" />
             </motion.button>
-            <motion.button whileTap={{ scale: 0.92 }} onClick={detectLocation}
+            <motion.button whileTap={{ scale: 0.92 }} onClick={detectLocation} aria-label="Use current location"
               style={{ padding: '0 16px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.3)', background: 'rgba(255,255,255,0.2)', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
               {locating
                 ? <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1 }}><FiMapPin size={18} color="white" /></motion.div>
@@ -431,6 +490,16 @@ export default function App() {
         <AnimatePresence>
           {!weather && (
             <motion.div {...fadeUp}>
+              {history.length === 0 && favourites.length === 0 && (
+                <div style={{ marginBottom: '1rem' }}>
+                  <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.55)', marginBottom: '6px', fontWeight: '600', letterSpacing: '0.8px' }}>TRY A CITY</div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                    {sampleCities.map(sample => (
+                      <motion.button key={sample} whileTap={{ scale: 0.95 }} onClick={() => { setCity(sample); fetchWeather(sample); }} style={chipStyle}>{sample}</motion.button>
+                    ))}
+                  </div>
+                </div>
+              )}
               {favourites.length > 0 && (
                 <div style={{ marginBottom: '0.75rem' }}>
                   <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.55)', marginBottom: '6px', fontWeight: '600', letterSpacing: '0.8px' }}>FAVOURITES</div>
@@ -491,11 +560,11 @@ export default function App() {
                     <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.7)', textTransform: 'capitalize', marginTop: '3px' }}>{weather.weather[0].description}</div>
                   </div>
                   <div style={{ display: 'flex', gap: '8px' }}>
-                    <motion.button whileTap={{ scale: 0.9 }} onClick={toggleFavourite}
+                    <motion.button whileTap={{ scale: 0.9 }} onClick={toggleFavourite} aria-label={isFav ? 'Remove from favourites' : 'Add to favourites'}
                       style={{ background: isFav ? 'rgba(255,215,0,0.25)' : 'rgba(255,255,255,0.15)', border: `1px solid ${isFav ? 'rgba(255,215,0,0.5)' : 'rgba(255,255,255,0.25)'}`, borderRadius: '10px', padding: '8px 10px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
                       <FiStar size={16} color={isFav ? '#FFD700' : 'white'} fill={isFav ? '#FFD700' : 'none'} />
                     </motion.button>
-                    <motion.button whileTap={{ scale: 0.9 }} onClick={() => { setWeather(null); setCity(''); setTheme(weatherThemes.default); setCondition(null); }}
+                    <motion.button whileTap={{ scale: 0.9 }} onClick={() => { setWeather(null); setCity(''); setTheme(weatherThemes.default); setCondition(null); setLastUpdated(null); }} aria-label="Clear weather result"
                       style={{ background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.25)', borderRadius: '10px', padding: '8px 10px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
                       <FiX size={16} color="white" />
                     </motion.button>
@@ -513,7 +582,8 @@ export default function App() {
                 </div>
 
                 <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.7)', marginBottom: '1.25rem' }}>
-                  Feels like {convertTemp(weather.main.feels_like)} · High {convertTemp(weather.main.temp_max)} · Low {convertTemp(weather.main.temp_min)}
+                  Feels like {convertTemp(weather.main.feels_like)} | High {convertTemp(weather.main.temp_max)} | Low {convertTemp(weather.main.temp_min)}
+                  {lastUpdated && <> | Updated {formatUpdated(lastUpdated)}</>}
                 </div>
 
                 <div style={{ height: '2px', background: `linear-gradient(90deg, ${theme.accent}, transparent)`, borderRadius: '99px', marginBottom: '1.25rem', opacity: 0.6 }} />
@@ -521,7 +591,7 @@ export default function App() {
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
                   {[
                     [<WiHumidity size={26} color={theme.accent} />, 'Humidity', weather.main.humidity + '%'],
-                    [<FiWind size={18} color={theme.accent} />, 'Wind', weather.wind.speed + ' m/s'],
+                    [<FiWind size={18} color={theme.accent} />, 'Wind', weather.wind.speed + ` ${windUnit}`],
                     [<FiEye size={18} color={theme.accent} />, 'Visibility', weather.visibility ? (weather.visibility / 1000).toFixed(1) + ' km' : 'N/A'],
                     [<WiBarometer size={26} color={theme.accent} />, 'Pressure', weather.main.pressure + ' hPa'],
                     [<WiSunrise size={26} color={theme.accent} />, 'Sunrise', formatTime(weather.sys.sunrise)],
@@ -550,7 +620,7 @@ export default function App() {
                     </div>
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px' }}>
-                    {[['PM2.5', airQuality.components.pm2_5], ['PM10', airQuality.components.pm10], ['CO', airQuality.components.co], ['NO₂', airQuality.components.no2], ['O₃', airQuality.components.o3], ['SO₂', airQuality.components.so2]].map(([label, val]) => (
+                    {[['PM2.5', airQuality.components.pm2_5], ['PM10', airQuality.components.pm10], ['CO', airQuality.components.co], ['NO2', airQuality.components.no2], ['O3', airQuality.components.o3], ['SO2', airQuality.components.so2]].map(([label, val]) => (
                       <div key={label} style={{ background: 'rgba(0,0,0,0.15)', borderRadius: '10px', padding: '8px', textAlign: 'center', border: '1px solid rgba(255,255,255,0.1)' }}>
                         <div style={{ fontSize: '13px', fontWeight: '700', color: 'white' }}>{Math.round(val)}</div>
                         <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.55)' }}>{label}</div>
@@ -600,7 +670,7 @@ export default function App() {
 
         <div style={{ textAlign: 'center', color: 'rgba(255,255,255,0.35)', fontSize: '12px', marginTop: '2rem', fontStyle: 'italic' }}>
           <div>© 2026 WeatherNow</div>
-          <div style={{ marginTop: '2px' }}>Built by Joseph — OMTECH INNOVATORS</div>
+          <div style={{ marginTop: '2px' }}>Built by Joseph - OMTECH INNOVATORS</div>
         </div>
 
       </div>
